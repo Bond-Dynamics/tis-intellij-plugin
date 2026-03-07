@@ -1,0 +1,16 @@
+# Gradle
+path-b-gradle/build/
+path-b-gradle/.gradle/
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
+
+# Claude Code
+.claude/
+
+# Docs (generated plans)
+.docs/

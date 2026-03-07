@@ -1,0 +1,62 @@
+# TIS Error Test: Context-Sensitive Grammar Violations
+# From EXP-001: "TIS grammar is context-sensitive — condition assignment validity
+# depends on prior declarations. Rules out JSON/YAML."
+#
+# Expected errors:
+#   E200 INCOMPLETE     — d_C = 2 (only C1 and C4 present, missing C2 and C3)
+#   E100 MALFORMED      — C4 appears before C1 (ordering violation)
+#
+# The acquisition ordering C1->C2->C3->C4 is load-bearing grammar:
+#   C2 (coupling) requires C1 (entropy) — you can't couple to what isn't being processed
+#   C3 (self-modification) requires C1+C2 — you can't modify coupling that doesn't exist
+#   C4 (closure) requires C1+C2+C3 — you can't close over what hasn't been established
+
+tis: "1.0"
+
+ground_truth:
+  entity: ordering_test
+  domain: "context-sensitive grammar validation"
+  testable: true
+
+conditions:
+  # E100 MALFORMED: C4 appears first — violates acquisition ordering
+  C4_closure:
+    eigenfunction: premature_monitor
+    eigenvalue:
+      value: 1.0
+      min: 0.5
+      max: 2.0
+    coupling:
+      to: C1_entropy
+      det: 0.90
+      phase: 0.05
+
+  C1_entropy:
+    source: data_feed
+    process: entropy_reducer
+    rate: 0.8
+    coupling:
+      to: ground_truth
+      det: 0.88
+      phase: 0.10
+
+  # C2_coupling is MISSING — E200 INCOMPLETE
+  # C3_self_modification is MISSING — E200 INCOMPLETE
+  # d_C = 2 < 4
+
+chain:
+  - op: IDENTITY
+    input: data_feed
+    output: processed
+    det: 1.0
+    phase: 0.0
+    signal: entropy
+
+metadata:
+  coupling:
+    to: chain
+    det: 1.0
+    phase: 0.0
+  tier: 0.30
+  archetype: decoupled
+  notes: "Context-sensitive grammar test — ordering and completeness violations"

@@ -1,0 +1,25 @@
+{
+  "name": "TIS Preferences",
+  "scopeName": "source.tis",
+  "settings": {
+    "shellVariables": [
+      {
+        "name": "TM_COMMENT_START",
+        "value": "# "
+      }
+    ],
+    "increaseIndentPattern": "^\\s*(?:ground_truth|conditions|chain|metadata|coupling|C[1-4]_\\w+|eigenvalue)\\s*:\\s*(?:$|\\{)",
+    "decreaseIndentPattern": "^\\s*\\}",
+    "foldingStartMarker": "^\\s*(?:ground_truth|conditions|chain|metadata|C[1-4]_\\w+|coupling|eigenvalue)\\s*:",
+    "foldingStopMarker": "^(?=\\S)|^\\s*$",
+    "bracketPairs": [
+      ["{", "}"],
+      ["[", "]"]
+    ],
+    "autoClosingPairs": [
+      { "open": "{", "close": "}" },
+      { "open": "[", "close": "]" },
+      { "open": "\"", "close": "\"" }
+    ]
+  }
+}

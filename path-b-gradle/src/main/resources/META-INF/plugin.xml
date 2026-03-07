@@ -1,0 +1,84 @@
+<idea-plugin>
+    <id>com.bonddynamics.tis</id>
+    <name>Truth Instruction Set (TIS)</name>
+    <version>1.1.0</version>
+    <vendor email="dev@bonddynamics.com" url="https://github.com/bonddynamics/tis">Bond Dynamics</vendor>
+
+    <description><![CDATA[
+    <p>Language support for <b>TIS (Truth Instruction Set)</b> — a composition description
+    language at L0 of the GTC/CPT/PMCA/Application stack where degeneracy is grammatically
+    inexpressible. Derived from the General Theory of Composition.</p>
+
+    <h3>Features</h3>
+    <ul>
+      <li>Syntax highlighting for .tis files with four primitive type categories:
+        Entity (noun), Condition (adjective), Coupling (verb), Scope (boundary)</li>
+      <li><b>Zero-determinant error detection</b> (E302): <code>det: 0.0</code> flagged at the
+        lexer level — zero determinants are type errors, not runtime exceptions</li>
+      <li><b>Context-sensitive condition ordering</b> (E100): C1-C2-C3-C4 acquisition
+        ordering enforced — condition validity depends on prior declarations</li>
+      <li><b>Compositional completeness check</b> (E200): d_C = 4 requires all four conditions</li>
+      <li><b>Chain continuity check</b> (E301): link[i].output must equal link[i+1].input</li>
+      <li><b>Chain product computation</b>: product of det(J_i) accumulated in real-time (ACCUMULATE
+        is the parsing process, not a document element)</li>
+      <li><b>Phase sum check</b> (E401): sum of phases exceeding pi = destructive interference</li>
+      <li><b>Orphan detection</b> (E303): conditions and metadata without coupling declarations</li>
+      <li><b>Condition number warning</b> (E500): kappa exceeds threshold = fragile composition</li>
+      <li><b>ground_truth position enforcement</b> (E100): must appear first (highest attention weight)</li>
+      <li>Comment toggling with <code>#</code></li>
+      <li>Color customization: Settings &gt; Editor &gt; Color Scheme &gt; Truth Instruction Set</li>
+    </ul>
+
+    <h3>What is TIS?</h3>
+    <p>TIS is not a data format with validation bolted on. It is a composition description
+    language where the grammar enforces non-degeneracy — degenerate compositions are syntax
+    errors, not runtime exceptions. Expression IS verification.</p>
+    ]]></description>
+
+    <change-notes><![CDATA[
+    <p><b>1.1.0</b> — Structural annotator: condition ordering, d_C completeness, chain continuity,
+    chain product computation, accumulated phase sum, orphan detection, metadata coupling,
+    ground_truth position enforcement.</p>
+    <p><b>1.0.0</b> — Initial release. Syntax highlighting, zero-det annotator, file type registration.</p>
+    ]]></change-notes>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Language & File Type -->
+        <fileType
+            name="TIS File"
+            implementationClass="com.bonddynamics.tis.TisFileType"
+            fieldName="INSTANCE"
+            language="tis"
+            extensions="tis"/>
+
+        <lang.parserDefinition
+            language="tis"
+            implementationClass="com.bonddynamics.tis.TisParserDefinition"/>
+
+        <!-- Syntax Highlighter (native lexer-based) -->
+        <lang.syntaxHighlighterFactory
+            language="tis"
+            implementationClass="com.bonddynamics.tis.TisSyntaxHighlighterFactory"/>
+
+        <!-- Zero-Determinant Error Annotator (Rule L1: lexer-level zero rejection) -->
+        <annotator
+            language="tis"
+            implementationClass="com.bonddynamics.tis.TisZeroDetAnnotator"/>
+
+        <!-- Structural Annotator (Rules P1-P5, R3, V1-V3: context-sensitive grammar) -->
+        <annotator
+            language="tis"
+            implementationClass="com.bonddynamics.tis.TisStructuralAnnotator"/>
+
+        <!-- Commenter for Ctrl+/ -->
+        <lang.commenter
+            language="tis"
+            implementationClass="com.bonddynamics.tis.TisCommenter"/>
+
+        <!-- Color Settings Page -->
+        <colorSettingsPage
+            implementation="com.bonddynamics.tis.TisColorSettingsPage"/>
+    </extensions>
+</idea-plugin>

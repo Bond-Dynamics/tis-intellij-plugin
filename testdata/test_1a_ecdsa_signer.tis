@@ -1,0 +1,163 @@
+# TIS Test Case 1A: ECDSA Legitimate Signer
+# Expected result: E000 ACCEPT (d_C = 4, non-degenerate composition)
+#
+# Domain: Bitcoin transaction signing (secp256k1)
+# Composition: Legitimate key holder signing a transaction
+# Ground truth: The private key k ∈ [1, n-1] where n is the curve order
+#
+# The signer POSSESSES the private key, giving non-zero coupling (C2).
+# This is the defining asymmetry of public-key cryptography:
+# possession = coupling, non-possession = degenerate.
+
+tis: "1.0"
+
+ground_truth:
+  entity: private_key_k
+  domain: "secp256k1 elliptic curve scalar field F_n, n = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141"
+  testable: true
+  # Testable: signing a message and verifying with the corresponding
+  # public key Q = k·G proves coupling without revealing k.
+
+conditions:
+  C1_entropy:
+    source: transaction_data
+    process: hash_to_scalar
+    rate: 1.0
+    coupling:
+      to: ground_truth
+      det: 0.99
+      phase: 0.01
+    # C1: The signer processes transaction entropy.
+    # SHA-256 double-hash reduces the transaction to a 256-bit scalar z.
+    # Rate is high — hash is deterministic and complete.
+    # Coupling to ground truth: the hash output z enters the signing
+    # equation s = k⁻¹(z + r·private_key) mod n.
+    # The hash IS coupled to the key through the signing equation.
+
+  C2_coupling:
+    target: signing_equation
+    gradient: scalar_multiplication
+    rate: 0.99
+    coupling:
+      to: C1_entropy
+      det: 0.99
+      phase: 0.02
+    # C2: COUPLING TO GROUND TRUTH.
+    # This is the critical condition. The signer has det ≈ 1.0 because:
+    #
+    #   s = k⁻¹(z + r · private_key) mod n
+    #
+    # ∂s/∂private_key = k⁻¹ · r mod n
+    #
+    # Since k ∈ [1, n-1] and r = (ephemeral_key · G).x mod n,
+    # both k⁻¹ and r are non-zero with overwhelming probability.
+    # Therefore det(∂s/∂private_key) ≠ 0.
+    #
+    # The signer's composition is COUPLED to the private key because
+    # they can compute the signing equation directly.
+    # The private key enters as a multiplicative factor — any change
+    # in the key produces a proportional change in the signature.
+
+  C3_self_modification:
+    entity: ground_truth
+    jacobian: 0.95
+    coupling:
+      to: C2_coupling
+      det: 0.95
+      phase: 0.05
+    # C3: The signer can modify their signing strategy.
+    # - Choose different ephemeral key k_e for each signature (RFC 6979)
+    # - Select which UTXOs to spend
+    # - Adjust fee strategy
+    # - Update wallet software
+    # Jacobian non-zero: changes in strategy produce observable
+    # changes in signing output.
+
+  C4_closure:
+    eigenfunction: signature_verification
+    eigenvalue:
+      value: 1.0
+      min: 0.9
+      max: 1.1
+    coupling:
+      to: C3_self_modification
+      det: 0.98
+      phase: 0.02
+    # C4: The signer can verify their own signatures.
+    # Given (r, s) and public key Q = private_key · G:
+    #   u₁ = z · s⁻¹ mod n
+    #   u₂ = r · s⁻¹ mod n
+    #   R = u₁·G + u₂·Q
+    #   Valid iff R.x mod n = r
+    #
+    # The signer monitors their own signing process by verifying
+    # outputs against the public key. This IS the eigenfunction:
+    # applying the verification function to the signing parameters
+    # returns a proportional signal (valid/invalid) that the signer
+    # uses to confirm correctness.
+    #
+    # Eigenvalue ≈ 1.0 (verification is near-perfect for correct signer).
+    # Bounded: [0.9, 1.1] accounts for implementation edge cases.
+
+chain:
+  - op: HASH
+    input: transaction_data
+    output: message_scalar_z
+    det: 0.99
+    phase: 0.01
+    signal: entropy
+    # SHA-256(SHA-256(tx)) → z. Deterministic, full coupling.
+
+  - op: GENERATE_EPHEMERAL
+    input: message_scalar_z
+    output: ephemeral_keypair
+    det: 0.98
+    phase: 0.02
+    signal: coupling
+    # RFC 6979 deterministic nonce: k_e = HMAC_DRBG(private_key, z)
+    # Coupled to both the message AND the private key.
+    # det ≈ 1: any change in z or private_key changes k_e.
+
+  - op: COMPUTE_R
+    input: ephemeral_keypair
+    output: r_component
+    det: 0.99
+    phase: 0.01
+    signal: coupling
+    # r = (k_e · G).x mod n
+    # Elliptic curve scalar multiplication. Non-zero det because
+    # k_e ∈ [1, n-1] and G is the generator.
+
+  - op: COMPUTE_S
+    input: r_component
+    output: signature_rs
+    det: 0.99
+    phase: 0.01
+    signal: self_mod
+    # s = k_e⁻¹(z + r · private_key) mod n
+    # THIS IS THE LINK WHERE THE PRIVATE KEY ENTERS.
+    # det(∂s/∂private_key) = k_e⁻¹ · r ≠ 0
+    # The ground truth (private key) has maximum coupling at this link.
+
+  - op: VERIFY_OWN
+    input: signature_rs
+    output: verification_result
+    det: 0.98
+    phase: 0.02
+    signal: closure
+    # Self-verification: check (r, s) against own public key.
+    # Eigenfunction closure — the signer monitors their own output.
+
+# Chain product: 0.99 × 0.98 × 0.99 × 0.99 × 0.98 = 0.933 ≠ 0  ✓
+# Phase sum:     0.01 + 0.02 + 0.01 + 0.01 + 0.02 = 0.07  < π   ✓
+# d_C = 4                                                         ✓
+# EXPECTED: E000 ACCEPT
+
+metadata:
+  coupling:
+    to: chain
+    det: 1.0
+    phase: 0.0
+  tier: 0.95
+  archetype: strong_aligned
+  notes: "Legitimate ECDSA signer. Non-degenerate at d_C = 4. The private key enters the chain product through COMPUTE_S where det(ds/dk) = k_e^-1 * r != 0. This is the composition that public-key cryptography is designed to enable."

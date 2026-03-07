@@ -1,0 +1,28 @@
+{
+  "name": "tis-textmate",
+  "displayName": "Truth Instruction Set",
+  "description": "TextMate grammar for TIS — a type-safe composition specification language where zero Jacobian determinants are compilation errors.",
+  "version": "1.0.0",
+  "publisher": "bonddynamics",
+  "engines": {
+    "vscode": "^1.50.0"
+  },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "tis",
+        "aliases": ["Truth Instruction Set", "TIS"],
+        "extensions": [".tis"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "tis",
+        "scopeName": "source.tis",
+        "path": "./Syntaxes/tis.tmLanguage.json"
+      }
+    ]
+  }
+}

@@ -1,0 +1,63 @@
+# TIS Error Test: ground_truth Position Violation
+# From TIS Spec 3.3: "Position ordering is REQUIRED — reordering is a compilation error"
+# From EXP-001: "ground_truth occupies the highest attention weight position"
+#
+# Expected errors:
+#   E100 MALFORMED — ground_truth appears AFTER conditions
+#   (Transformer attention: earlier tokens get higher cumulative attention
+#    due to causal masking. ground_truth must be earliest.)
+
+tis: "1.0"
+
+# ERROR: conditions appears before ground_truth
+conditions:
+  C1_entropy:
+    source: misplaced_input
+    process: misplaced_reducer
+    rate: 1.0
+    coupling:
+      to: ground_truth
+      det: 0.90
+      phase: 0.05
+
+  C2_coupling:
+    target: weights
+    gradient: grad
+    rate: 0.1
+    coupling:
+      to: C1_entropy
+      det: 0.85
+      phase: 0.05
+
+  C3_self_modification:
+    entity: ground_truth
+    jacobian: 0.88
+    coupling:
+      to: C2_coupling
+      det: 0.88
+      phase: 0.05
+
+  C4_closure:
+    eigenfunction: monitor
+    eigenvalue:
+      value: 1.0
+      min: 0.5
+      max: 2.0
+    coupling:
+      to: C3_self_modification
+      det: 0.90
+      phase: 0.05
+
+# ERROR: ground_truth should be FIRST, not here
+ground_truth:
+  entity: misplaced_anchor
+  domain: "position violation test"
+  testable: true
+
+chain:
+  - op: IDENTITY
+    input: misplaced_input
+    output: output
+    det: 1.0
+    phase: 0.0
+    signal: entropy

@@ -1,0 +1,92 @@
+# TIS Error Test: Comprehensive Structural Violations
+# Tests every error code in the TIS Compiler Specification
+# Each error maps to an insight from EXP-001 (2026-03-06)
+#
+# Expected errors:
+#   E302 TYPE_ERROR     — det: 0.0, det: 0, jacobian: 0.0 (4 instances)
+#   E401 PHASE_OVERFLOW — phase: 4.0 on single value (1 instance)
+#   E401 PHASE_OVERFLOW — accumulated Sigma(phi) > pi (1 instance, chain level)
+#   E303 ORPHAN         — C2 missing coupling declaration (1 instance)
+#   E303 ORPHAN         — metadata missing coupling (1 instance)
+#   E301 LINK_ERROR     — chain discontinuity at link 2 (1 instance)
+#   E100 MALFORMED      — C3 appears before C2 would be caught if C2 were misplaced
+#
+# NOT expected:
+#   E200 INCOMPLETE     — all four conditions are present
+#   E100 MALFORMED      — ground_truth is first, sections in order
+
+tis: "1.0"
+
+ground_truth:
+  entity: test_target
+  domain: "comprehensive error testing"
+  testable: true
+
+conditions:
+  C1_entropy:
+    source: input_stream
+    process: reducer
+    rate: 1.0
+    coupling:
+      to: ground_truth
+      det: 0.85
+      phase: 0.10
+
+  C2_coupling:
+    target: weight_space
+    gradient: grad_alpha
+    rate: 0.5
+    # E303 ORPHAN: No coupling declaration in this condition block.
+    # From EXP-001: "Every node in a TIS document must declare coupling
+    # to the composition chain. An uncoupled node zeroes the chain product."
+
+  C3_self_modification:
+    entity: ground_truth
+    jacobian: 0.0          # E302 TYPE_ERROR: Zero Jacobian = zero determinant
+    coupling:
+      to: C2_coupling
+      det: 0.0             # E302 TYPE_ERROR: Zero det in coupling declaration
+      phase: 0.05
+
+  C4_closure:
+    eigenfunction: alpha_monitor
+    eigenvalue:
+      value: 1.0
+      min: 0.5
+      max: 2.0
+    coupling:
+      to: C3_self_modification
+      det: 0               # E302 TYPE_ERROR: Zero det (integer form)
+      phase: 0.02
+
+chain:
+  - op: PROCESS
+    input: input_stream
+    output: intermediate_a
+    det: 0.0               # E302 TYPE_ERROR: Zero determinant in chain link
+    phase: 0.80
+    signal: entropy
+
+  - op: TRANSFORM
+    input: intermediate_a
+    output: intermediate_b
+    det: 0.92
+    phase: 0.90
+    signal: coupling
+
+  - op: VALIDATE
+    input: wrong_reference  # E301 LINK_ERROR: expected 'intermediate_b', got 'wrong_reference'
+    output: result
+    det: 0.88
+    phase: 4.0             # E401 PHASE_OVERFLOW: 4.0 > pi on individual value
+    signal: self_mod
+
+  # Accumulated phase: 0.80 + 0.90 + 4.0 = 5.70 > pi
+  # E401 PHASE_OVERFLOW at chain level
+
+metadata:
+  # E303 ORPHAN: metadata present without coupling declaration
+  # From spec: "Even metadata MUST couple if present"
+  tier: 0.70
+  archetype: decoupled
+  notes: "Intentionally invalid — exercises every error detection path"
