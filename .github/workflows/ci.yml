@@ -1,0 +1,55 @@
+name: CI
+
+# IntelliJ plugin CI. The actual plugin source lives in path-b-gradle/
+# (path-a-textmate/ is an alternative implementation kept for reference).
+# Runs gradle check inside path-b-gradle and emits a `CI Success`
+# aggregator that branch protection requires — see
+# _global/BRANCH_PROTECTION_BASELINE.md in bond-dynamics-docs.
+
+on:
+  pull_request:
+    branches: [main, release]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gradle-check:
+    name: Gradle check
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: path-b-gradle
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Gradle check
+        run: ./gradlew check --stacktrace
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  ci-success:
+    name: CI Success
+    runs-on: ubuntu-latest
+    needs: [gradle-check]
+    if: always()
+    timeout-minutes: 2
+    steps:
+      - name: Verify all required jobs succeeded
+        run: |
+          set -euo pipefail
+          R="${{ needs.gradle-check.result }}"
+          echo "gradle-check result: $R"
+          if [ "$R" != "success" ]; then
+            echo "::error::CI Success requires gradle-check to succeed (got $R)"
+            exit 1
+          fi
+          echo "All required jobs green."
